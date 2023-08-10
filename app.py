@@ -90,16 +90,19 @@ def scrape_website(objective: str, url: str):
 
 
 def summary(objective, content):
-    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+    llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
 
     text_splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n"], chunk_size=10000, chunk_overlap=500)
     docs = text_splitter.create_documents([content])
     map_prompt = """
-    Extract the key information as summary of the following text for {objective}. The text is Scraped data from a website so 
+    Extract the key information for the following text for {objective}. The text is Scraped data from a website so 
     will have a lot of usless information that doesnt relate to this topic, links, other news stories etc.. 
     Only summarise the relevant Info and try to keep as much factual information Intact
-    Do not describe what the webpage is, you are here to get acurate and specific information:
+    Do not describe what the webpage is, you are here to get acurate and specific information
+    Example of what NOT to do: "Investor's Business Daily: Investor's Business Daily provides news and trends on AI stocks and artificial intelligence. They cover the latest updates on AI stocks and the trends in artificial intelligence. You can stay updated on AI stocks and trends at [AI News: Artificial Intelligence Trends And Top AI Stocks To Watch "
+    Here is the text:
+
     "{text}"
     SUMMARY:
     """
@@ -157,18 +160,16 @@ content="""You are a world class researcher, who can do detailed research on any
             3/ After scraping & search, you should think "is there any new things i should search & scraping based on the data I collected to increase research quality?" If answer is yes, continue; But don't do this more than 3 iteratins
             4/ You should not make things up, you should only write facts & data that you have gathered
             5/ In the final output, You should include all reference data & links to back up your research; You should include all reference data & links to back up your research
-            6/ Always look at the web first if possible
-            7/ Output as much information as possible
+            6/ Always look at the web first
+            7/ Output as much information as possible, make sure your answer is at least 500 WORDS
             8/ Be specific about your reasearch, do not just point to a website and say things can be found here, that what you are for
             
 
-            Example of what NOT to do return, these tell the user nothing!!
+            Example of what NOT to do return these are just a summary of whats on the website an nothing specific, these tell the user nothing!!
 
             1/WIRED - WIRED provides the latest news, articles, photos, slideshows, and videos related to artificial intelligence. Source: WIRED
 
             2/Artificial Intelligence News - This website offers the latest AI news and trends, along with industry research and reports on AI technology. Source: Artificial Intelligence News
-
-            3/MIT News - Massachusetts Institute of Technology (MIT) provides news articles related to artificial intelligence. One recent article discusses an AI model that can help determine the origin of a patient's cancer. Source: MIT News
             """
 )
 
@@ -196,25 +197,41 @@ template = """
 You will be given a bunch of info below and a topic headline, your job is to use this info and your own knowledge
 to write an engaging Twitter thread.
 The first tweet in the thread should have a hook and engage with the user to read on.
-Example hooks:
-1.____ simple principles to_______
 
-2.____ sentences that'll make you _____ than a _______ degree
-3._____ ____ rules everyone should learn by ____
-4.This will make you ______ in __ days
-5.If you want to fix____________, read this
-6.__ things I know at __ I wish I’d known at ___
-7.It feels illegal to know about these______________
-8. ___ habits to get rid of_______
-9.Here are __ ______ Shortcuts that'll save you hundreds of hours of your life
-10._____ people use _____ every day. But no one uses it effectively.
-11. Most people don't understand _____, but its critical too _______. Here's it explained simply...
+Here is your style guide for how to write the thread:
+1. Voice and Tone:
+Informative and Clear: Prioritize clarity and precision in presenting data. Phrases like "Research indicates," "Studies have shown," and "Experts suggest" impart a tone of credibility.
+Casual and Engaging: Maintain a conversational tone using contractions and approachable language. Pose occasional questions to the reader to ensure engagement.
+2. Mood:
+Educational: Create an atmosphere where the reader feels they're gaining valuable insights or learning something new.
+Inviting: Use language that encourages readers to dive deeper, explore more, or engage in a dialogue.
+3. Sentence Structure:
+Varied Sentence Lengths: Use a mix of succinct points for emphasis and longer explanatory sentences for detail.
+Descriptive Sentences: Instead of directive sentences, use descriptive ones to provide information. E.g., "Choosing a topic can lead to..."
+4. Transition Style:
+Sequential and Logical: Guide the reader through information or steps in a clear, logical sequence.
+Visual Emojis: Emojis can still be used as visual cues, but opt for ones like ℹ️ for informational points or ➡️ to denote a continuation.
+5. Rhythm and Pacing:
+Steady Flow: Ensure a smooth flow of information, transitioning seamlessly from one point to the next.
+Data and Sources: Introduce occasional statistics, study findings, or expert opinions to bolster claims, and offer links or references for deeper dives.
+6. Signature Styles:
+Intriguing Introductions: Start tweets or threads with a captivating fact, question, or statement to grab attention.
+Question and Clarification Format: Begin with a general question or statement and follow up with clarifying information. E.g., "Why is sleep crucial? A study from XYZ University points out..."
+Use of '➡️' for Continuation: Indicate that there's more information following, especially useful in threads.
+Engaging Summaries: Conclude with a concise recap or an invitation for further discussion to keep the conversation going.
+Distinctive Indicators for an Informational Twitter Style:
 
+Leading with Facts and Data: Ground the content in researched information, making it credible and valuable.
+Engaging Elements: The consistent use of questions and clear, descriptive sentences ensures engagement without leaning heavily on personal anecdotes.
+Visual Emojis as Indicators: Emojis are not just for casual conversations; they can be effectively used to mark transitions or emphasize points even in an informational context.
+Open-ended Conclusions: Ending with questions or prompts for discussion can engage readers and foster a sense of community around the content.
+
+Last instructions:
 The twitter thread should be between the length of 3 and 10 tweets 
 Each tweet should start with (tweetnumber/total length)
 Dont overuse hashtags, only one or two for entire thread.
 Use links sparingly and only when really needed, but when you do make sure you actually include them! 
-Only return the thread, no other text
+Only return the thread, no other text, and make each tweet its own paragraph.
 Make sure each tweet is lower that 220 chars
     Topic Headline:{topic}
     Info: {info}
@@ -224,7 +241,7 @@ prompt = PromptTemplate(
     input_variables=["info","topic"], template=template
 )
 
-llm = ChatOpenAI()
+llm = ChatOpenAI(model_name="gpt-4")
 llm_chain = LLMChain(
     llm=llm,
     prompt=prompt,
@@ -236,11 +253,16 @@ llm_chain = LLMChain(
 twitapi = tweeter()
 
 def tweetertweet(thread):
+
     tweets = thread.split("\n\n")
+    #give some spacing between sentances
+    tweets = [s.replace('. ', '.\n\n') for s in tweets]
+
     response = twitapi.create_tweet(text=tweets[0])
     id = response.data['id']
     tweets.pop(0)
     for i in tweets:
+        print("tweeting: " + i)
         reptweet = twitapi.create_tweet(text=i, 
                                     in_reply_to_tweet_id=id, 
                                     )
@@ -248,22 +270,33 @@ def tweetertweet(thread):
     
 
 def main():
+    
     st.set_page_config(page_title="AI research agent", page_icon=":bird:")
 
     st.header("AI research agent :bird:")
     query = st.text_input("Research goal")
 
-    if query:
+    if not hasattr(st.session_state, 'result'):
+        st.session_state.result = None
+
+    if not hasattr(st.session_state, 'thread'):
+        st.session_state.thread = None
+
+    if query and (st.session_state.result is None or st.session_state.thread is None):
         st.write("Doing research for ", query)
 
-        result = agent({"input": query})
-        thread = llm_chain.predict(topic = query, info = result['output'])
-        st.markdown(thread)
-        tweet =  st.button("Tweeeeeet")
+        st.session_state.result = agent({"input": query})
+        st.session_state.thread = llm_chain.predict(topic=query, info=st.session_state.result['output'])
+
+    if st.session_state.result and st.session_state.thread:
+        st.markdown(st.session_state.thread)
+        tweet = st.button("Tweeeeeet")
         st.markdown("Twitter thread Generated from the below research")
-        st.markdown(result['output'])
+        st.markdown(st.session_state.result['output'])
+
         if tweet:
-            tweetertweet(thread)
+            tweetertweet(st.session_state.thread)
+ 
 
 if __name__ == '__main__':
     main()
