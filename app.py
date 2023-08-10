@@ -178,7 +178,7 @@ agent_kwargs = {
     "system_message": system_message,
 }
 
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k-0613")
+llm = ChatOpenAI(temperature=0, model="gpt-4")
 memory = ConversationSummaryBufferMemory(
     memory_key="memory", return_messages=True, llm=llm, max_token_limit=1000)
 
@@ -249,6 +249,7 @@ llm_chain = LLMChain(
     
 )
 
+
   
 twitapi = tweeter()
 
@@ -296,6 +297,7 @@ def main():
 
         if tweet:
             tweetertweet(st.session_state.thread)
+            
  
 
 if __name__ == '__main__':
