@@ -250,14 +250,24 @@ llm_chain = LLMChain(
 )
 
 
+
   
 twitapi = tweeter()
 
 def tweetertweet(thread):
 
     tweets = thread.split("\n\n")
+   
+    #check each tweet is under 280 chars
+    for i in range(len(tweets)):
+        if len(tweets[i]) > 280:
+            prompt = f"Shorten this tweet to be under 280 characters: {tweets[i]}"
+            tweets[i] = llm.predict(prompt)[:280]
     #give some spacing between sentances
     tweets = [s.replace('. ', '.\n\n') for s in tweets]
+
+    for tweet in tweets:
+        tweet = tweet.replace('**', '')
 
     response = twitapi.create_tweet(text=tweets[0])
     id = response.data['id']
@@ -268,34 +278,51 @@ def tweetertweet(thread):
                                     in_reply_to_tweet_id=id, 
                                     )
         id = reptweet.data['id']
-    
+
+
+  
 
 def main():
     
+    # Set page title and icon
     st.set_page_config(page_title="AI research agent", page_icon=":bird:")
 
+    # Display header 
     st.header("AI research agent :bird:")
+    
+    # Get user's research goal input
     query = st.text_input("Research goal")
 
+    # Initialize result and thread state if needed
     if not hasattr(st.session_state, 'result'):
         st.session_state.result = None
 
     if not hasattr(st.session_state, 'thread'):
         st.session_state.thread = None
 
+    # Do research if query entered and no prior result
     if query and (st.session_state.result is None or st.session_state.thread is None):
         st.write("Doing research for ", query)
 
+        # Run agent to generate result
         st.session_state.result = agent({"input": query})
+        
+        # Generate thread from result
         st.session_state.thread = llm_chain.predict(topic=query, info=st.session_state.result['output'])
 
+    # Display generated thread and result if available
     if st.session_state.result and st.session_state.thread:
         st.markdown(st.session_state.thread)
+        
+        # Allow tweeting thread
         tweet = st.button("Tweeeeeet")
+        
+        # Display info on result 
         st.markdown("Twitter thread Generated from the below research")
         st.markdown(st.session_state.result['output'])
-
+    
         if tweet:
+            # Tweet thread
             tweetertweet(st.session_state.thread)
             
  
